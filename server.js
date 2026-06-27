@@ -25,6 +25,9 @@ const sqlite3 = require("sqlite3").verbose();
 // Esto ayuda a que el proyecto funcione mejor en Windows, Linux o Mac.
 const path = require("path");
 
+// Importamos fs, que permite crear carpetas y archivos de forma segura antes de usar SQLite.
+const fs = require("fs");
+
 // Creamos una aplicacion de Express.
 // Esta variable representa nuestro servidor y nos permite definir rutas, recibir datos y responder al navegador.
 const app = express();
@@ -48,6 +51,9 @@ app.use(express.static(path.join(__dirname, "public")));
 // Creamos la ruta completa donde se guardara el archivo de base de datos.
 // El archivo se llamara inscripciones.db y estara dentro de la carpeta data.
 const databasePath = path.join(__dirname, "data", "inscripciones.db");
+
+// Garantizamos que la carpeta data exista antes de crear la base de datos.
+fs.mkdirSync(path.dirname(databasePath), { recursive: true });
 
 // Abrimos o creamos la base de datos SQLite.
 // Si el archivo inscripciones.db no existe, SQLite lo crea automaticamente.
@@ -75,7 +81,13 @@ db.run(`
         observacion TEXT,
         fecha_registro TEXT DEFAULT CURRENT_TIMESTAMP
     )
-`);
+`, (error) => {
+    if (error) {
+        console.error("Error al crear la tabla inscripciones:", error.message);
+    } else {
+        console.log("Tabla inscripciones lista para usar.");
+    }
+});
 
 /*
 ================================================================================
@@ -204,4 +216,12 @@ app.delete("/api/inscripciones/:id", (req, res) => {
 app.listen(PORT, () => {
     // Mostramos en consola la direccion donde se puede abrir el proyecto.
     console.log(`Servidor iniciado en http://localhost:${PORT}`);
+}).on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+        console.error(`El puerto ${PORT} ya está en uso. Cierra el proceso anterior o cambia PORT.`);
+    } else {
+        console.error("No se pudo iniciar el servidor:", error.message);
+    }
+
+    process.exit(1);
 });
